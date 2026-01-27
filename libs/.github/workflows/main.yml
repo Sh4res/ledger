@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - main
+      - release/v1.12
 
 name: Main
 jobs:
