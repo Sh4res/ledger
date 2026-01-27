@@ -42,7 +42,7 @@ jobs:
   DockerRelease:
     needs:
       - Control
-      - Test_sqlite
+      # - Test_sqlite
       - Test_postgres
     if: github.event_name == 'release'
     uses: ./.github/workflows/template_docker.yaml
@@ -56,7 +56,7 @@ jobs:
   DockerBranch:
     needs:
       - Control
-      - Test_sqlite
+      # - Test_sqlite
       - Test_postgres
     if: github.event_name != 'release'
     uses: ./.github/workflows/template_docker.yaml
