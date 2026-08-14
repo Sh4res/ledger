@@ -84,7 +84,7 @@ tasks:
   prebuild:
     cmds:
       - task: prebuild:setup-go
-      - task: install
+      # - task: install
 
   terminal:backend:
     vars:
