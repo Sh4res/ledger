@@ -7,6 +7,9 @@ output: "prefixed"
 
 run: once
 
+env:
+  PATH: '{{ .PATH }}:/usr/local/go/bin'
+
 vars:
   # aarch64 / x86_64
   PLATFORM:
@@ -64,10 +67,10 @@ tasks:
       vars:
         NAME: "{{.TASK}}"
         CMD: |
-          VERSION=1.19.13
+          VERSION=1.26.6
           curl -L https://go.dev/dl/go${VERSION}.linux-{{.DPKG_ARCH}}.tar.gz | tar -xz -C /usr/local -f -
           sed -i '/export PATH/i\'$'\n''PATH=$PATH:/usr/local/go/bin' /etc/profile
-          echo 'export PATH="$PATH:$(go env GOPATH)/bin"' >> /home/gitpod/.profile
+          echo 'export PATH="$PATH:/usr/local/go/bin:/home/gitpod/go"' >> /home/gitpod/.profile
 
   startup:install:
     internal: true
