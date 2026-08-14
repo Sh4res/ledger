@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -97,7 +98,10 @@ func (s *Store) GetBalances(ctx context.Context, q ledger.BalancesQuery) (api.Cu
 	sb := sqlbuilder.NewSelectBuilder()
 	switch s.Schema().Flavor() {
 	case sqlbuilder.PostgreSQL:
-		sb.Select("account", "array_agg((asset, input - output))")
+		sb.Select(
+			"account",
+			fmt.Sprintf("array_agg((asset, input - output)::%s)", s.schema.Table("volume_entry")),
+		)
 	case sqlbuilder.SQLite:
 		// we try to get the same format as array_agg from postgres : {"(USD,-12686)","(EUR,-250)"}
 		// so don't have to dev a marshal method for each storage
@@ -131,8 +135,24 @@ func (s *Store) GetBalances(ctx context.Context, q ledger.BalancesQuery) (api.Cu
 						continue
 					}
 
-					arg := sb.Args.Add("^" + strings.ReplaceAll(segment, "\\", "\\\\") + "$")
-					sb.Where(fmt.Sprintf("account_json @@ ('$[%d] like_regex \"' || %s::text || '\"')::jsonpath", i, arg))
+					if accountNameRegex.MatchString(segment) {
+						arg := sb.Args.Add(segment)
+						sb.Where(fmt.Sprintf("account_json @@ ('$[%d] == \"' || %s::text || '\"')::jsonpath", i, arg))
+					} else if strings.Contains(segment, "|") {
+						parts := strings.Split(segment, "|")
+						expr := make([]string, 0, len(parts))
+						for j, part := range parts {
+							if !accountNameRegex.MatchString((part)) {
+								return api.Cursor[core.AccountsBalances]{}, errors.New("unsupported query")
+							}
+							arg := sb.Args.Add(part)
+							expr[j] = fmt.Sprintf("$[%d] == \"' || %s::text || '\"", i, arg)
+						}
+						sb.Where(fmt.Sprintf("account_json @@ ('%s')::jsonpath", strings.Join(expr, " || ")))
+					} else {
+						arg := sb.Args.Add("^" + strings.ReplaceAll(segment, "\\", "\\\\") + "$")
+						sb.Where(fmt.Sprintf("account_json @@ ('$[%d] like_regex \"' || %s::text || '\"')::jsonpath", i, arg))
+					}
 				}
 			} else {
 				asAnys := make([]any, 0)
