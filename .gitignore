@@ -9,7 +9,11 @@ vendor
 sdk/swagger.yaml
 sdk/swagger.yaml-e
 sdk/sdks
-.vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .env
 sqlstorage.test
 ledger.test
