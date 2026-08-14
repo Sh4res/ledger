@@ -123,7 +123,7 @@ tasks:
 
   startup:
     deps:
-      - prebuild
+      - prebuild:setup-go
       - postgres
       - pgweb
       - task: terminal:backend
