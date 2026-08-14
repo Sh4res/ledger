@@ -67,7 +67,23 @@ tasks:
           VERSION=1.26.6
           curl -L https://go.dev/dl/go${VERSION}.linux-{{.DPKG_ARCH}}.tar.gz | tar -xz -C /usr/local -f -
           sed -i '/export PATH/i\'$'\n''PATH=$PATH:/usr/local/go/bin' /etc/profile
-          echo 'export PATH="$PATH:/usr/local/go/bin:/home/gitpod/go"' >> /home/gitpod/.bashrc
+          echo 'export PATH="$PATH:/usr/local/go/bin:/home/gitpod/go"' >> /home/gitpod/.profile
+
+
+  setup:config:shpool:
+    internal: true
+    status:
+      - test -f /home/gitpod/.config/shpool/config.toml
+    cmd: |
+      mkdir -p /home/gitpod/.config/shpool
+      cat > /home/gitpod/.config/shpool/config.toml <<'EOF'
+      initial_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:~/.local/bin:/usr/local/go/bin:~/go"
+      [env]
+      PSQL_EDITOR = "code -w"
+      PGDATABASE = "ledger"
+      PGPASSWORD = "ledger"
+      PGPORT = "5432"
+      EOF
 
   startup:install:
     internal: true
@@ -81,12 +97,10 @@ tasks:
         vars:
           SIGNAL: deps-install
 
-  prebuild:
-    cmds:
-      - task: prebuild:setup-go
-      # - task: install
-
   terminal:backend:
+    deps: 
+      - prebuild:setup-go
+      - setup:config:shpool
     vars:
       ACTION: >-
         {{.ACTION | default "attach"}}
