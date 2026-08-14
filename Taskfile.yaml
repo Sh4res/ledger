@@ -1,8 +1,41 @@
-# https://taskfile.dev
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
 
 version: "3"
 
+set: ["e", "u", "pipefail"]
+output: "prefixed"
+
+run: once
+
 vars:
+  # aarch64 / x86_64
+  PLATFORM:
+    sh: uname -m
+  # arm64 / amd64
+  DPKG_ARCH:
+    sh: dpkg --print-architecture
+  # arm64 / x64
+  ARCH:
+    sh: |
+      ARCH=
+      dpkgArch="{{.DPKG_ARCH}}"
+      case "${dpkgArch##*-}" in
+        amd64) ARCH='x64' ;;
+        arm64) ARCH='arm64' ;;
+        *) echo "unsupported architecture"; exit 1 ;;
+      esac
+      echo -n $ARCH
+  # arm64 / x86_64
+  PLATFORM_ARCH:
+    sh: |
+      ARCH=
+      dpkgArch="{{.DPKG_ARCH}}"
+      case "${dpkgArch##*-}" in
+        amd64) ARCH='x86_64' ;;
+        arm64) ARCH='arm64' ;;
+        *) echo "unsupported architecture"; exit 1 ;;
+      esac
+      echo -n $ARCH
   PKG: "./..."
   FAILFAST: "-failfast"
   TIMEOUT: "10m"
@@ -15,7 +48,88 @@ vars:
   BENCH_MEM_PROFILE: "/tmp/benchmarks/ledger.mem.prof"
   VERBOSE: "false"
 
+includes:
+  base:
+    taskfile: /etc/Taskfile.yml
+    dir: .
+    flatten: true
+
 tasks:
+  prebuild:setup-go:
+    internal: true
+    status:
+      - test -f /usr/local/go/bin/go
+    cmd:
+      task: sudo
+      vars:
+        NAME: "{{.TASK}}"
+        CMD: |
+          VERSION=1.26.6
+          curl -L https://go.dev/dl/go${VERSION}.linux-{{.DPKG_ARCH}}.tar.gz | tar -xz -C /usr/local -f -
+          sed -i '/export PATH/i\'$'\n''PATH=$PATH:/usr/local/go/bin' /etc/profile
+          echo 'export PATH="$PATH:/usr/local/go/bin:/home/gitpod/go"' >> /home/gitpod/.profile
+
+
+  setup:config:shpool:
+    internal: true
+    status:
+      - test -f /home/gitpod/.config/shpool/config.toml
+    cmd: |
+      mkdir -p /home/gitpod/.config/shpool
+      cat > /home/gitpod/.config/shpool/config.toml <<'EOF'
+      initial_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:~/.local/bin:/usr/local/go/bin:~/go"
+      [env]
+      PSQL_EDITOR = "code -w"
+      PGDATABASE = "ledger"
+      PGPASSWORD = "ledger"
+      PGPORT = "5432"
+      EOF
+
+  startup:install:
+    internal: true
+    deps:
+      - prebuild:setup-go
+    status:
+      - test -f .task/signals/deps-install.done
+    cmds:
+      - go mod download
+      - task: sync:done
+        vars:
+          SIGNAL: deps-install
+
+  terminal:backend:
+    deps: 
+      - prebuild:setup-go
+      - setup:config:shpool
+    vars:
+      ACTION: >-
+        {{.ACTION | default "attach"}}
+    requires:
+      vars:
+        - name: ACTION
+          enum:
+            - new
+            - attach
+    cmds:
+      - task: terminal:{{.ACTION}}
+        vars:
+          NAME: backend
+          DIR: >-
+            {{.TASK_DIR}}
+          CMD: clear && source ~/.profile && history -c
+
+  pgweb:
+    - docker compose up -d pgweb
+
+  startup:
+    deps:
+      - prebuild:setup-go
+      - postgres
+      - pgweb
+      - task: terminal:backend
+        vars:
+          ACTION: new
+
   default:
     cmds:
       - task: generate
@@ -108,14 +222,19 @@ tasks:
     - install:perf
 
   install:golangci-lint:
+    deps:
+      - prebuild:setup-go
     cmds:
       - >
         curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh |
-        sh -s -- -b $(go env GOPATH)/bin latest
+        sh -s -- -b /home/gitpod/go/bin latest
       - golangci-lint --version
 
   install:perf:
-    - go install golang.org/x/perf/cmd/...@latest
+    deps:
+      - prebuild:setup-go
+    cmds:
+      - /usr/local/go/bin/go install golang.org/x/perf/cmd/...@latest
 
   postgres:
     cmds:
