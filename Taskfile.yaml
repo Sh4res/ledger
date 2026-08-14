@@ -7,9 +7,6 @@ output: "prefixed"
 
 run: once
 
-env:
-  PATH: '{{ .PATH }}:/usr/local/go/bin'
-
 vars:
   # aarch64 / x86_64
   PLATFORM:
@@ -70,7 +67,7 @@ tasks:
           VERSION=1.26.6
           curl -L https://go.dev/dl/go${VERSION}.linux-{{.DPKG_ARCH}}.tar.gz | tar -xz -C /usr/local -f -
           sed -i '/export PATH/i\'$'\n''PATH=$PATH:/usr/local/go/bin' /etc/profile
-          echo 'export PATH="$PATH:/usr/local/go/bin:/home/gitpod/go"' >> /home/gitpod/.profile
+          echo 'export PATH="$PATH:/usr/local/go/bin:/home/gitpod/go"' >> /home/gitpod/.bashrc
 
   startup:install:
     internal: true
@@ -216,14 +213,14 @@ tasks:
     cmds:
       - >
         curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh |
-        sh -s -- -b $(go env GOPATH)/bin latest
+        sh -s -- -b /home/gitpod/go/bin latest
       - golangci-lint --version
 
   install:perf:
     deps:
       - prebuild:setup-go
     cmds:
-      - go install golang.org/x/perf/cmd/...@latest
+      - /usr/local/go/bin/go install golang.org/x/perf/cmd/...@latest
 
   postgres:
     cmds:
