@@ -1,0 +1,26 @@
+{
+  "private": true,
+  "version": "0.0.1",
+  "author": "Shares",
+  "name": "migrations",
+  "title": "Migrations",
+  "license": "UNLICENSED",
+  "description": "Migration scoping",
+  "os": [
+    "darwin",
+    "win32",
+    "linux"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@anthropic-ai/claude-code": "2.1.232",
+    "happy": "1.1.8"
+
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.4.0"
+}

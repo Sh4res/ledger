@@ -3,6 +3,8 @@
 ; This subdirectory is a git "subrepo", and this file is maintained by the
 ; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
 ;
+node_modules/
+
 [subrepo]
 	remote = ledger
 	branch = main
@@ -10,3 +12,4 @@
 	parent = fc952d609b53fe413925ea4a735d4c37ab4f0435
 	method = merge
 	cmdver = 0.4.5
+
